@@ -47,6 +47,7 @@ contract ModuleKitTemplateBiconomyTest is Test, RhinestoneModuleKit {
         assertEq(receiver.balance, 10 gwei, "Receiver should have 10 gwei");
     }
 
+
     function testMockExecutor() public {
         // add executor to smart account
         instance.addExecutor(address(executor));
