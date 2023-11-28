@@ -43,20 +43,19 @@ library SafeHelpers {
             initializer: abi.encodeCall(
                 IRhinestone4337.init, (address(env.validator), env.initialTrustedAttester)
                 ),
-            requiresClone: false
+            isSafeModule: true
         });
 
         modules[1] = InitialModule({
             moduleAddress: address(env.executorManager),
             salt: salt,
             initializer: "",
-            requiresClone: false
+            isSafeModule: true
         });
 
         // Calldata sent to init4337Safe
-        bytes memory initModuleCalldata = abi.encodeWithSelector(
-            IBootstrap.initialize.selector, modules, env.rhinestoneFactory, safeOwner
-        );
+        bytes memory initModuleCalldata =
+            abi.encodeWithSelector(IBootstrap.initialize.selector, modules, safeOwner);
 
         // Initial owners of Safe
         address[] memory owners = new address[](1);

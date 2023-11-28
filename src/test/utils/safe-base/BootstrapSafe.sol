@@ -2,39 +2,25 @@
 pragma solidity >=0.8.0 <0.9.0;
 
 import { IBootstrap, InitialModule } from "../../../common/IBootstrap.sol";
-import { IProtocolFactory } from "../../../common/IRhinestoneProtocol.sol";
 
 contract Bootstrap is IBootstrap {
     address internal SENTINEL_ADDRESS = address(0x1);
 
     error InitializationFailed(address module);
 
-    function initialize(
-        InitialModule[] calldata modules,
-        address proxyFactory,
-        address owner
-    )
-        external
-    {
+    function initialize(InitialModule[] calldata modules, address owner) external {
         // ENABLE MODULES
         uint256 len = modules.length;
         for (uint256 i = 0; i < len;) {
             InitialModule calldata initialModule = modules[i];
-            address module;
-            if (initialModule.requiresClone) {
-                module = IProtocolFactory(proxyFactory).cloneExecutor(
-                    initialModule.moduleAddress, initialModule.salt
-                );
-            } else {
-                module = initialModule.moduleAddress;
-            }
+            address module = initialModule.moduleAddress;
             if (initialModule.initializer.length != 0) {
                 (bool success,) = module.call(initialModule.initializer);
                 if (!success) {
                     revert InitializationFailed(module);
                 }
             }
-            if (module != address(0)) {
+            if (initialModule.isSafeModule) {
                 bytes32 moduleSlot = keccak256(abi.encode(module, 1));
                 bytes32 sentinelModuleSlot = keccak256(abi.encode(SENTINEL_ADDRESS, 1));
                 assembly {
