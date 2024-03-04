@@ -71,11 +71,25 @@ abstract contract ExecutionHelper {
         }
     }
 
+    /**
+     * Execute delegatecall on Safe
+     * @dev This function will revert if the delegatecall fails
+     * @param safe address of the safe
+     * @param target address of the contract to delegatecall
+     * @param callData bytes encoded calldata
+     */
     function _executeDelegateCall(address safe, address target, bytes calldata callData) internal {
         bool success = ISafe(safe).execTransactionFromModule(target, 0, callData, 1);
         if (!success) revert ExecutionFailed();
     }
 
+    /**
+     * Execute delegatecall on Safe. Return return data
+     * @dev This function will revert if the delegatecall fails
+     * @param safe address of the safe
+     * @param target address of the contract to delegatecall
+     * @param callData bytes encoded calldata
+     */
     function _executeDelegateCallReturnData(
         address safe,
         address target,
