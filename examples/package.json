@@ -15,6 +15,7 @@
     "@rhinestone/modulekit": "workspace:*",
     "@rhinestone/safe7579": "workspace:*",
     "@rhinestone/sessionkeymanager": "workspace:*",
+    "@rhinestone/registry": "link:../../../registry",
     "@prb/math": "^4.0.2",
     "erc4337-validation": "github:rhinestonewtf/erc4337-validation",
     "@ERC4337/account-abstraction": "github:kopy-kat/account-abstraction#develop",
