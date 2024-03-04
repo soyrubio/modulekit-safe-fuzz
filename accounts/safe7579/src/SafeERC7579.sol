@@ -277,10 +277,9 @@ contract SafeERC7579 is ISafeOp, IERC7579Account, AccessControl, IMSA, HookManag
     /**
      * @inheritdoc IERC7579Account
      */
-    function accountId() external pure override returns (string memory accountImplementationId) {
-        // TODO: concat safe version
+    function accountId() external view override returns (string memory accountImplementationId) {
         string memory safeVersion = ISafe(_msgSender()).VERSION();
-        return abi.encodePackedad(safeVersion, "erc7579.v0.0.0");
+        return string(abi.encodePacked(safeVersion, "erc7579.v0.0.0"));
     }
 
     /**
