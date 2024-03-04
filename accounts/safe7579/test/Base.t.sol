@@ -2,9 +2,12 @@
 pragma solidity ^0.8.23;
 
 import "forge-std/Test.sol";
+import "forge-std/console2.sol";
 import { SafeERC7579 } from "src/SafeERC7579.sol";
 import { ModuleManager } from "src/core/ModuleManager.sol";
+import { Bootstrap } from "src/utils/Bootstrap.sol";
 import { MockValidator } from "./mocks/MockValidator.sol";
+import { ISafe } from "src/interfaces/ISafe.sol";
 import { MockExecutor } from "./mocks/MockExecutor.sol";
 import { MockFallback } from "./mocks/MockFallback.sol";
 import { MockTarget } from "@rhinestone/modulekit/src/mocks/MockTarget.sol";
@@ -14,24 +17,9 @@ import { LibClone } from "solady/src/utils/LibClone.sol";
 
 import "./dependencies/EntryPoint.sol";
 
-contract Bootstrap is ModuleManager {
-    function singleInitMSA(
-        address validator,
-        bytes calldata validatorData,
-        address executor,
-        bytes calldata executorData
-    )
-        external
-    {
-        // init validator
-        _installValidator(address(validator), validatorData);
-        _installExecutor(executor, executorData);
-    }
-}
-
 contract TestBaseUtil is Test {
     // singletons
-    SafeERC7579 internal erc7579Mod;
+    SafeERC7579 internal safe7579;
     Safe internal safeImpl;
     Safe internal safe;
     IEntryPoint internal entrypoint = IEntryPoint(ENTRYPOINT_ADDR);
@@ -51,7 +39,8 @@ contract TestBaseUtil is Test {
 
         // Set up MSA and Factory
         bootstrap = new Bootstrap();
-        erc7579Mod = new SafeERC7579();
+        safe7579 = new SafeERC7579();
+        vm.label(address(safe7579), "safe7579");
         safeImpl = new Safe();
 
         signer1 = makeAccount("signer1");
@@ -68,37 +57,35 @@ contract TestBaseUtil is Test {
         vm.deal(address(safe), 100 ether);
     }
 
-    function safeSetup() internal returns (Safe clone, address _defaultValidator) {
-        clone = Safe(payable(LibClone.clone(address(safeImpl))));
+    function safeSetup() internal returns (Safe _safeAccount, address _defaultValidator) {
+        _safeAccount = Safe(payable(LibClone.clone(address(safeImpl))));
+        vm.label(address(_safeAccount), "Safe Account");
         _defaultValidator = address(defaultValidator);
 
         address[] memory signers = new address[](2);
         signers[0] = signer1.addr;
         signers[1] = signer2.addr;
 
-        // TODO: think about launchpad impl see: passkey for safe.
-        clone.setup({
+        _safeAccount.setup({
             _owners: signers,
             _threshold: 2,
-            to: address(0), // optional delegatecall
-            data: "",
-            fallbackHandler: address(erc7579Mod),
+            to: address(bootstrap),
+            data: abi.encodeCall(
+                Bootstrap.enableModule,
+                (
+                    address(bootstrap),
+                    address(safe7579),
+                    _defaultValidator,
+                    "",
+                    address(defaultExecutor),
+                    ""
+                )
+                ),
+            fallbackHandler: address(safe7579),
             paymentToken: address(0), // optional payment token
             payment: 0,
             paymentReceiver: payable(address(0)) // optional payment receiver
          });
-
-        vm.startPrank(address(clone));
-        clone.enableModule(address(erc7579Mod));
-        erc7579Mod.initializeAccount(
-            abi.encode(
-                address(bootstrap),
-                abi.encodeCall(
-                    Bootstrap.singleInitMSA, (_defaultValidator, "", address(defaultExecutor), "")
-                )
-            )
-        );
-        vm.stopPrank();
     }
 
     function getNonce(address account, address validator) internal view returns (uint256 nonce) {
