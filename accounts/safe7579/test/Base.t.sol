@@ -72,14 +72,7 @@ contract TestBaseUtil is Test {
             to: address(bootstrap),
             data: abi.encodeCall(
                 Bootstrap.enableModule,
-                (
-                    address(bootstrap),
-                    address(safe7579),
-                    _defaultValidator,
-                    "",
-                    address(defaultExecutor),
-                    ""
-                )
+                (address(safe7579), _defaultValidator, "", address(defaultExecutor), "")
                 ),
             fallbackHandler: address(safe7579),
             paymentToken: address(0), // optional payment token

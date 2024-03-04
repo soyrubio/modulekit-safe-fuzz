@@ -6,8 +6,13 @@ import { ISafe } from "src/interfaces/ISafe.sol";
 import { SafeERC7579 } from "src/SafeERC7579.sol";
 
 contract Bootstrap is ModuleManager {
+    address immutable THIS;
+
+    constructor() {
+        THIS = address(this);
+    }
+
     function enableModule(
-        address bootstrap,
         address safe7579,
         address validator,
         bytes calldata validatorData,
@@ -22,9 +27,7 @@ contract Bootstrap is ModuleManager {
         bytes memory initCalldata = abi.encodeWithSelector(
             this.initSafe7579.selector, validator, validatorData, executor, executorData
         );
-        SafeERC7579(payable(safe7579)).initializeAccount(
-            abi.encode(address(bootstrap), initCalldata)
-        );
+        SafeERC7579(payable(safe7579)).initializeAccount(abi.encode(address(THIS), initCalldata));
     }
 
     function initSafe7579(
