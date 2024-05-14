@@ -83,6 +83,7 @@ contract Safe7579Launchpad is IAccount, SafeStorage {
 
     receive() external payable { }
 
+    // @audit why is "were initialized" here. according to the graph,
     /**
      * This function is intended to be delegatecalled by the ISafe.setup function. It configures the
      * Safe7579 for the user for all module types except validators, which were initialized in the
