@@ -7,6 +7,10 @@ import "test/mocks/MockTarget.sol";
 import "test/mocks/MockExecutor.sol";
 import { ModeLib, ModeCode } from "erc7579/lib/ModeLib.sol";
 import { ExecutionLib } from "erc7579/lib/ExecutionLib.sol";
+import {
+    SafeProxy,
+    SafeProxyFactory
+} from "@safe-global/safe-contracts/contracts/proxies/SafeProxyFactory.sol";
 
 contract ModeLibWrapper {
     function encodeSimpleSingle() external pure returns (ModeCode) {

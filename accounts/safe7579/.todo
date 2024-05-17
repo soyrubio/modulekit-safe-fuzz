@@ -1,9 +1,21 @@
 
 QnA:
-    ☐ Why do i need Sender Creator?
-    ☐ what is mocktarget?
-    ☐ why are there two thresholds??
+    ✔ @question why do i need Sender Creator? @done(24-05-14 15:45)
+        - Helper contract for EntryPoint, to call userOp.initCode from a "neutral" address,
+        - which is explicitly not the entryPoint itself.
+
+    ☐ @question what is mocktarget?
+
+    ☐ @question why are there two thresholds??
         - one goes to _configureRegistry
-            ☐ but why does registry store threshold for safe?
+            ☐ @question but why does registry store threshold for safe?
         - the other is thresholds for safe i guess
-    ☐ why is there duplicate data in the initData launchpad struct?
+
+    ☐ @question why is there duplicate data in the initData launchpad struct?
+
+    ☐ @question is the workflow alright?
+        - mainly, are validators set in validateUserOps?
+        - and then, are other modules set afterwards
+
+    ☐ @question safe7579 cannot be deployed without an entrypoint?
+
