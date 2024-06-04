@@ -11,9 +11,10 @@ from pytypes.test.mocks.MockValidator import MockValidator
 from pytypes.test.mocks.MockExecutor import MockExecutor
 from pytypes.test.mocks.MockTarget import MockTarget
 from pytypes.src.interfaces.IERC7579Account import IERC7579Account
-from pytypes.tests.Imports import ModeLibWrapper, ExecutionLibWrapper
+from pytypes.tests.Imports import ModeLibWrapper, ExecutionLibWrapper, Cast
 from pytypes.node_modules.safeglobal.safecontracts.contracts.proxies.SafeProxy import SafeProxy
 from pytypes.node_modules.ERC4337.accountabstraction.contracts.interfaces.PackedUserOperation import PackedUserOperation
+import dataclasses
 
 # Print failing tx call trace
 # def revert_handler(e: TransactionRevertedError):
@@ -32,10 +33,6 @@ def mock_entrypoint():
     _entrypoint.init(ENTRYPOINT_ADDR) # TODO why?
     return _entrypoint
 
-# TODO whats this
-
-
-
 class Safe7579Fuzz(FuzzTest):
     entrypoint: EntryPointSimulationsPatch
 
@@ -49,22 +46,24 @@ class Safe7579Fuzz(FuzzTest):
             nonce=self.safe7579_singleton.getNonce(account, validator),
             initCode=bytearray(),
             callData=bytearray(),
-            accountGasLimits=bytearray(Abi.encode_packed(['uint128', 'uint128'], [2e6, 2e6])),
+            accountGasLimits=bytearray(Abi.encode_packed(['uint128', 'uint128'], [int(2e6), int(2e6)])),
             preVerificationGas=int(2e6),
-            gasFees=bytearray(Abi.encode_packed(['uint128', 'uint128'], [2e6, 2e6])),
+            gasFees=bytearray(Abi.encode_packed(['uint128', 'uint128'], [int(2e6), int(2e6)])),
             paymasterAndData=bytearray(),
             signature=bytearray(Abi.encode_packed(['bytes'], [bytearray(0x41414141)]))
         )
 
     def get_initcode(self, initializer: bytes, salt: bytes) -> bytes:
+        _createcall = Abi.encode_call(
+            self.safe_factory.createProxyWithNonce,
+            [self.launchpad.address, initializer, Cast.deploy().bytes32ToUint256(salt)] # is the salt correct?
+        )
+
         return Abi.encode_packed(
             ['address', 'bytes'],
             [
                 self.safe_factory.address,
-                Abi.encode_call(
-                    self.safe_factory.createProxyWithNonce,
-                    [self.launchpad.address, initializer, salt]
-                )
+                _createcall
             ]
         )
 
@@ -93,24 +92,37 @@ class Safe7579Fuzz(FuzzTest):
 
         # self.safe_factory = SafeFactory()
         _factory = SafeFactory()
-        self.safe_factory = _factory.safe_proxy_factory
-        self.safe_singleton = _factory.safe_singleton
+        self.safe_factory = _factory.factory_contract
+        self.safe_singleton = _factory.singleton_contract
         self.safe7579_singleton = Safe7579.deploy()
 
         _target = MockTarget.deploy()
 
         _default_validator = MockValidator.deploy()
         _default_executor = MockExecutor.deploy()
+        # TODO: encoder cannot encode struct
+        # _executors = [
+        #     ModuleInit(
+        #         module=_default_executor.address,
+        #         initData=bytearray()
+        #     )
+        # ]
         _executors = [
-            ModuleInit(
-                module=_default_executor.address,
-                initData=bytearray()
+            (
+                _default_executor.address,
+                bytearray()
             )
         ]
         _validators = [
             ModuleInit(
                 module=_default_validator.address,
                 initData=bytearray()
+            )
+        ]
+        _validators_tuple = [
+            (
+                _default_validator.address,
+                bytearray()
             )
         ]
         _hooks = []
@@ -127,12 +139,12 @@ class Safe7579Fuzz(FuzzTest):
             ]
         )
         a = ExecutionLibWrapper.deploy().encodeSingle(
-                    target=_target.address,
-                    value_=0,
-                    callData=Abi.encode_call(
-                        MockTarget.set,
-                        [1337]
-                    )
+            target=_target.address,
+            value_=0,
+            callData=Abi.encode_call(
+                MockTarget.set,
+                [1337]
+            )
         )
 
         # TODO why this
@@ -162,11 +174,22 @@ class Safe7579Fuzz(FuzzTest):
             callData=bytearray(_calldata)
         )
 
+        _initdata_tuple = (
+            self.safe_singleton.address,
+            _owners,
+            _threshold,
+            self.launchpad.address,
+            bytearray(_setupdata),
+            self.safe7579_singleton,
+            _validators_tuple,
+            bytearray(_calldata)
+        )
+
         _initHash = self.launchpad.hash(_initdata)
 
         _factory_initializer = Abi.encode_call(
             Safe7579Launchpad.preValidationSetup,
-            [_initHash, Address(0), ""]
+            [_initHash, Address(0), bytearray()]
         )
 
         _predicted_address = self.launchpad.predictSafeAddress(
@@ -185,20 +208,22 @@ class Safe7579Fuzz(FuzzTest):
         _userop.callData = bytearray(Abi.encode_call(
             Safe7579Launchpad.setupSafe,
             [
-                _initdata
+                _initdata_tuple
             ]
         ))
-        _userop.initCode = bytearray(self.get_initcode(
+
+        _initcode = self.get_initcode(
             initializer=_factory_initializer,
             salt=_salt
-        ))
+        )
+        _userop.initCode = bytearray(_initcode)
         _userop.sender = _predicted_address
         _userop.signature = bytearray(Abi.encode_packed(
             ['uint48', 'uint48', 'bytes'],
             [
                 0,
                 2**48 - 1, # max uint48
-                bytearray(4141414141414141414141414141414141) # TODO why
+                bytes.fromhex("4141414141414141414141414141414141") # TODO why
             ]
         ))
 
@@ -223,5 +248,6 @@ def revert_handler(e: TransactionRevertedError):
         print(e.tx.console_logs)
 
 @on_revert(revert_handler)
+@default_chain.connect()
 def test_custom_bridge():
     Safe7579Fuzz().run(sequences_count=1, flows_count=1)

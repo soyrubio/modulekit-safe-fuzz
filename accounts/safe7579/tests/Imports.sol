@@ -30,5 +30,10 @@ contract ExecutionLibWrapper {
     {
         return ExecutionLib.encodeSingle(target, value, callData);
     }
+}
 
+contract Cast {
+    function bytes32ToUint256(bytes32 b) external pure returns (uint256) {
+        return uint256(b);
+    }
 }
